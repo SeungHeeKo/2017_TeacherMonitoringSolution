@@ -209,21 +209,6 @@ namespace TeacherMonitoringSolution
             messageHandlingDelimiter = '_';
         }
 
-        //private string udpComm_OnGetUDPMessage()
-        //{
-        //    string retval = null;
-        //    string Message = udpComm.ReceiveMessage;
-
-        //    //switch (Message)
-        //    //{
-        //    //    case
-        //    //}
-
-
-        //    return retval;
-
-        //}
-
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             tcpComm = new TCPComm();

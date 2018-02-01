@@ -144,11 +144,6 @@ namespace TeacherMonitoringSolution
 
             udpComm = new UDPComm();
             udpComm.OnReceiveMessage += new UDPComm.ReceiveMessageHandler(udpComm_OnReceiveMessage);
-            //udpComm.OnSendMessage += new UDPComm.SendMessageHandler(udpComm_OnSendMessage);
-            //udpComm.OnGetUDPMessage += udpComm_OnGetUDPMessage;
-
-
-            //udpThread = new Thread(new ThreadStart(udpComm.InitUDPSocket));
             udpThread = new Thread(udpComm.InitUDPSocket);
             udpThread.IsBackground = true;
             udpThread.Start();
@@ -1065,17 +1060,17 @@ namespace TeacherMonitoringSolution
                         switch (titleNum)
                         {
                             case (int)WindowVideoTitle.Mars:
-                                udpComm.SendBroadcastMessage(clientIP, _marsFilePath);
+                                udpComm.SendMessage(clientIP, _marsFilePath);
                                 break;
                             case (int)WindowVideoTitle.Student:
-                                udpComm.SendBroadcastMessage(clientIP, _studentFilePath);
+                                udpComm.SendMessage(clientIP, _studentFilePath);
                                 break;
                         }
                     }
                 }
 
 
-                udpComm.SendBroadcastMessage(clientIP, _playAllMessage);
+                udpComm.SendMessage(clientIP, _playAllMessage);
                 return;
             }
 

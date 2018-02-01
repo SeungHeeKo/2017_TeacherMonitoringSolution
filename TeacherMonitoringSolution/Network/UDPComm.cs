@@ -13,6 +13,15 @@ using System.Windows.Threading;
 
 namespace TeacherMonitoringSolution.Network
 {
+    /**
+     * 프로젝트 이름 : TeacherMonitoringSolution
+     * GIT HUB ADDRESS : https://github.com/SeungHeeKo/2017_TeacherMonitoringSolution
+     * 개발환경 : WPF (C#)
+     * 개발 내용 : 20대의 안드로이드 디바이스와 태블릿PC 간의 TCP, UDP를 통한 네트워크 통신 및 제어.
+     * 콘텐츠 내용 : 4차 산업혁명 진로체험 VR 실행 중인 20대의 안드로이드와 통신하여 모니터링 및 제어.
+     * 핵심개발자 : 고승희 
+     * 개발시작일 : 2017년 9월 1일
+     * **/
     public class UDPComm
     {
         private const int PORT_NUMBER = 15000;
@@ -20,20 +29,32 @@ namespace TeacherMonitoringSolution.Network
         private UdpClient udp = null;
         IAsyncResult _asyncResult = null;
         IPAddress localAddress;
-
-        private string _mountMessage = "HMDMount";
-        private string _unmountMessage = "HMDUnmount";
-        private string _connectMessage = "connected";
-        private string _interactionMessage = "Interaction";
-        private string _pauseMessage = "Pause";
-        private string _title_marsMessage = "Mars";
-        private string _title_studentMessage = "Student";
-        private string _stoppedMessage = "Stopped";
-        private string _finishMessage = "Finished";
-        private volatile bool _shouldStop;
-
+        
         public string _delimiter = "_";
 
+        public string ReceiveMessage = null;
+
+        /// <summary>
+        /// UDP client socket 생성
+        /// 
+        /// MainThread가 돌아가는 코드에서 아래와 같이 사용하시면 됩니다.
+        /// 
+        /// UDPComm udpComm = new UDPComm();
+        /// udpComm.OnReceiveMessage += new UDPComm.ReceiveMessageHandler(udpComm_OnReceiveMessage);
+        /// Thread udpThread = new Thread(udpComm.InitUDPSocket);
+        /// udpThread.IsBackground = true;
+        /// udpThread.Start();
+        /// 
+        /// 
+        /// udpComm_OnReceiveMessage는 MainThread에서 UDP 메세지 수신 이벤트를 핸들링하는 함수입니다. 아래와 같이 사용하시면 됩니다.
+        /// UDPComm 객체가 별도의 스레드에서 동작하기 때문에 MainThread에서 UDP 메세지(udpComm.ReceiveMessage)를 처리하기 위해서 Dispatcher를 사용하셔야 합니다.
+        /// UDPMessageHandling 함수도 마찬가지로 MainThread에서 동작하는 함수입니다.
+        /// void udpComm_OnReceiveMessage()
+        /// {
+        ///     Dispatcher.Invoke((Action)delegate () { UDPMessageHandling(udpComm.ReceiveMessage); });
+        /// }
+        /// 
+        /// </summary>
         public void InitUDPSocket()
         {
             try
@@ -62,6 +83,9 @@ namespace TeacherMonitoringSolution.Network
 
             }
         }
+        /// <summary>
+        /// UDP 통신 종료
+        /// </summary>
         public void Stop()
         {
             try
@@ -75,53 +99,25 @@ namespace TeacherMonitoringSolution.Network
             catch { }
         }
 
+        /// <summary>
+        /// 비동기로 UDP 통신 처리
+        /// </summary>
         private void StartListening()
         {
             try
             {
-                // ver1
-                //_asyncResult = udp.BeginReceive(UDPReceive, new object());
                 _asyncResult = udp.BeginReceive(UDPReceive, null);
-
-                // ver2
-                //while (!_shouldStop)
-                //{
-                //    var localEp = new IPEndPoint(IPAddress.Any, PORT_NUMBER);
-
-                //    udp.Client.Bind(localEp);
-
-                //    string hostName = Dns.GetHostName();
-                //    string myIP = Dns.GetHostEntry(hostName).AddressList[0].ToString();
-                //    localAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-                //    var data = udp.Receive(ref localEp);
-                //}
-
-                //Stop();
-
-
-                // ver3
-                //var localEp = new IPEndPoint(IPAddress.Any, PORT_NUMBER);
-
-                //udp.Client.Bind(localEp);
-
-                //string hostName = Dns.GetHostName();
-                //string myIP = Dns.GetHostEntry(hostName).AddressList[0].ToString();
-                //localAddress = Dns.GetHostEntry(Dns.GetHostName()).AddressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-                //_asyncResult = udp.BeginReceive(Receive, null);
             }
             catch (Exception ex)
             {
 
             }
         }
-
-        public void RequestStop()
-        {
-            _shouldStop = true;
-        }
-
-
-        public string ReceiveMessage = null;
+        
+        /// <summary>
+        /// UDP 메세지를 받는 함수
+        /// </summary>
+        /// <param name="asyncResult"></param>
         private void UDPReceive(IAsyncResult asyncResult)
         {
             try
@@ -131,31 +127,13 @@ namespace TeacherMonitoringSolution.Network
                     IPEndPoint ip = new IPEndPoint(IPAddress.Any, PORT_NUMBER);
                     byte[] bytes = udp.EndReceive(asyncResult, ref ip);
                     string messageContent = Encoding.UTF8.GetString(bytes);
+                    // client IP_message 형태로 메세지 저장
                     ReceiveMessage = ip.Address.ToString() + _delimiter + messageContent;
                     if (OnReceiveMessage != null && localAddress != null && !localAddress.ToString().Equals(ip.Address.ToString()))
                         OnReceiveMessage();
 
+                    // 수신한 UDP 메세지 처리 후 다시 Listening 상태로.
                     StartListening();
-
-#if DEBUG
-                    //OnReceiveMessage(message);
-                    //Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, new Action(delegate
-                    //{
-                    //    ((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(ip.Address.ToString() + "  " + message);
-                    //}));
-
-#else
-                    //if (OnReceiveMessage != null && localAddress != null && !localAddress.ToString().Equals(ip.Address.ToString()))
-                    //{
-                    //    //OnReceiveMessage(message);
-                    //    Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, new Action(delegate
-                    //    {
-                    //        ((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(message);
-                    //    }));
-                    //}
-#endif
-                    //if (OnReceiveMessage != null && localAddress != null && !localAddress.ToString().Equals(ip.Address.ToString()))
-                    //    MessageHandler(ip, ReceiveMessage);
                 }
             }
             catch (SocketException se)
@@ -168,108 +146,10 @@ namespace TeacherMonitoringSolution.Network
             }
         }
         
-        private void MessageHandler(IPEndPoint ip, string message)
-        {
-            if (message.Equals(_unmountMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).ClientDisconnected((ip.Address.ToString()));
-                });
-            }
-            else if (message.Equals(_mountMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).ClientConnected((ip.Address.ToString()));
-                });
-            }
-            else if (message.Equals(_connectMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).ClientConnected((ip.Address.ToString()));
-                });
-            }
-            else if (message.Equals(_finishMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).ClientDisconnected((ip.Address.ToString()));
-                });
-            }
-            else if (message.Equals(_stoppedMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).SetClientInteractionMode((ip.Address.ToString()), message);
-                });
-            }
-            else if (message.Equals(_interactionMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).SetClientInteractionMode((ip.Address.ToString()), message);
-                });
-            }
-            else if (message.Equals(_pauseMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).SetClientVideoPause((ip.Address.ToString()));
-                });
-            }
-            else if (message.Equals(_title_marsMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).SetClientVideoTitle((ip.Address.ToString()), _title_marsMessage);
-                });
-            }
-            else if (message.Equals(_title_studentMessage))
-            {
-
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).SetClientVideoTitle((ip.Address.ToString()), _title_studentMessage);
-                });
-            }
-            else
-            {
-                Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal, (ThreadStart)delegate
-                {
-                    //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-                    ((MainWindow)System.Windows.Application.Current.MainWindow).SetClientVideoPosition((ip.Address.ToString()), message);
-                });
-            }
-        }
-        //private void MessageHandler(IPEndPoint ip, string message)
-        //{
-        //    Application.Current.Dispatcher.Invoke(DispatcherPriority.Normal,  new Action(delegate {
-        //        //((MainWindow)System.Windows.Application.Current.MainWindow).PrintMessage(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString() + " " + counter);
-        //        ((MainWindow)System.Windows.Application.Current.MainWindow).MessageHandling(ip, message);
-        //    }));
-
-
-        //}
-
+        /// <summary>
+        /// 같은 네트워크에 연결된 모든 호스트에 메세지 전송
+        /// </summary>
+        /// <param name="message">전송할 메세지</param>
         public void SendBroadcastMessage(string message)
         {
             UdpClient client = new UdpClient();
@@ -282,7 +162,12 @@ namespace TeacherMonitoringSolution.Network
             if (OnSendMessage != null)
                 OnSendMessage(message);
         }
-        public void SendBroadcastMessage(string clientIP, string message)
+        /// <summary>
+        /// 특정 clientIP에 message 전송
+        /// </summary>
+        /// <param name="clientIP">특정 IP주소 ex) 192.168.0.1</param>
+        /// <param name="message">특정 호스트에 전송할 메세지</param>
+        public void SendMessage(string clientIP, string message)
         {
             UdpClient client = new UdpClient();
             IPEndPoint ip = new IPEndPoint(IPAddress.Parse(clientIP), PORT_NUMBER);
@@ -295,9 +180,16 @@ namespace TeacherMonitoringSolution.Network
                 OnSendMessage(message);
         }
 
+        /// <summary>
+        /// UDP 메세지 송신 이벤트 처리
+        /// </summary>
+        /// <param name="message">전송할 메세지</param>
         public delegate void SendMessageHandler(string message);
         public event SendMessageHandler OnSendMessage;
 
+        /// <summary>
+        /// UDP 메세지 수신 이벤트 처리
+        /// </summary>
         public delegate void ReceiveMessageHandler();
         public event ReceiveMessageHandler OnReceiveMessage;
     }
